@@ -1,8 +1,8 @@
 <?php
-namespace Concerto;
+namespace Doorman;
 
-class Auth_Group extends Auth_Privileged {
-	protected static $_table_name = 'auth_groups';
+class Group extends Privileged {
+	protected static $_table_name = 'doorman_groups';
 	protected static $_db_cols = array();
 	
 	protected static $_properties = array(
@@ -19,7 +19,7 @@ class Auth_Group extends Auth_Privileged {
 	protected static $_has_many = array(
 		'privileges'=>array(
 		    'key_from'=>'id',
-		    'model_to'=>'\\Concerto\\Auth_Privilege',
+		    'model_to'=>'\\Doorman\\Privilege',
 		    'key_to'=>'group_id',
 		    'cascade_save'=>true,
 		    'cascade_delete'=>true
@@ -30,9 +30,9 @@ class Auth_Group extends Auth_Privileged {
 		'users'=>array(
 			'key_from' => 'id',
 			'key_through_from' => 'group', // column 1 from the table in between, should match a posts.id
-			'table_through' => 'auth_group_assignments', // both models plural without prefix in alphabetical order
+			'table_through' => 'doorman_group_assignments', // both models plural without prefix in alphabetical order
 			'key_through_to' => 'user', // column 2 from the table in between, should match a users.id
-			'model_to' => '\\Concerto\\Auth_User',
+			'model_to' => '\\Doorman\\User',
 			'key_to' => 'id',
 			'cascade_save' => true,
 			'cascade_delete' => false
@@ -43,7 +43,7 @@ class Auth_Group extends Auth_Privileged {
 	 * Assigns a privilege to the group if it doesn't already have that privilege
 	 * 
 	 * @param int $privilege
-	 * @return \Concerto\InternalResponse
+	 * @return \InternalResponse
 	 */
 	public function assign_privilege($privilege) {
 		$response = \InternalResponse::forge();
@@ -63,7 +63,7 @@ class Auth_Group extends Auth_Privileged {
 				$object = $split[0];
 				$action = $split[1];
 				
-				$this->privileges[] = Auth_Privilege::forge(array('object'=>$object, 'action'=>$action));
+				$this->privileges[] = Privilege::forge(array('object'=>$object, 'action'=>$action));
 				$this->save();
 				$response->success();
 			}

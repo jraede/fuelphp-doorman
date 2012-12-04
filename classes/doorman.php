@@ -1,21 +1,20 @@
 <?php
-namespace Concerto;
+namespace Doorman;
 
 
-class AuthException extends \FuelException {}
+class DoormanException extends \FuelException {}
 
 
 /**
- * Concerto user authorization class
+ * Doorman user authorization class
  * 
  * Based on Auth package for FuelPHP
  * 
- * @package Concerto
- * @subpackage Auth
+ * @package Doorman
  * @author Jason Raede <jason@torchedm.com>
  */
 
-class Auth
+class Doorman
 {
 
 	protected static $_instance = null;
@@ -23,7 +22,7 @@ class Auth
 	/**
 	 * Current logged in user
 	 * 
-	 * @var \Concerto\Model\User
+	 * @var \Doorman\User
 	 */
 	protected $user = false;
 	
@@ -51,7 +50,7 @@ class Auth
 	}
 	
 	protected static function _config($value) {
-		return \Config::get('concerto.auth.'.$value);
+		return \Config::get('doorman.'.$value);
 	}
 	
 	/**
@@ -113,8 +112,8 @@ class Auth
 	/**
 	 * Validates login from HTTP POST request
 	 * 
-	 * @see \Auth::login()
-	 * @return \Concerto\InternalResponse
+	 * @see \Doorman::login()
+	 * @return \InternalResponse
 	 */
 	protected function validate_login() {
 		$validate = \InternalResponse::forge();
@@ -266,100 +265,8 @@ class Auth
 		elseif(in_array($object.'.'.$action.'.'.$id, $privileges)) return true;
 		
 		
-		/**
-		 * If an id is provided, the user may not have that specific privilege for that specific object.
-		 * More likely, the user would have a privilege to perform this action on a group of objects that
-		 * may or may not include that specific object.
-		 */
 		
-		if($id) {
-			$types = \Concerto\Model\Object::get_all_types();
-                        $types[] = 'object';
-                        
-			if(in_array($object.'.'.$action, $privileges)) return true;
-			
-			/**
-			 * If the object is a comment, they can have delete_own, delete_object, edit_own, edit_object
-			 */
-                        if($object == 'comment') {
-                             $own = array_keys($this->user->comments);
-                             $comment_object = \Concerto\Model\Comment::find($id)->object;
-                                  
-                             switch($action) {
-                                  
-                                  /**
-                                   * Can be delete_own, delete_object
-                                   */
-                                  case 'delete':
-                                       if(in_array($id, $own) && in_array('comment.delete_own', $privileges))
-                                               return true;
-                                       elseif($this->has_access($comment_object->type, 'edit', $comment_object->id)) 
-                                               return true;
-                                       break;
-                                  
-                                  /**
-                                   * Can be edit_own, edit_object
-                                   */
-                                  case 'edit':
-                                       if(in_array($id, $own) && in_array('comment.edit_own', $privileges))
-                                               return true;
-                                       elseif($this->has_object($comment_object->type, 'edit',  $comment_object->id))
-                                               return true;
-                                       break;
-                             }
-                        }
-                        /**
-                         * If it's an object, they can have delete_offspring, delete_own, edit_offspring, edit_own
-                         */
-                        elseif(in_array($object, $types)) {
-                             $own = array_keys($this->user->objects);
-                             $classname = '\\Concerto\\Model\\'.ucfirst($object);
-                             $object_model = $classname::find($id);
-                             switch($action) {
-                                  
-                                  /**
-                                   * Can be delete_own, delete_offspring
-                                   */
-                                  case 'delete':
-                                       if(in_array($id, $own) && in_array($object.'.delete_own', $privileges))
-                                               return true;
-                                       else {
-                                            /**
-                                             * Get all ancestors and cycle through
-                                             */
-                                            $ancestors = $object_model->get_ancestors('generation');
-                                            foreach($ancestors as $ancestor) {
-                                                 if($this->has_access($ancestor->type . '.edit', $ancestor->id)) {
-                                                      return true;
-                                                 }
-                                            }
-                                       }
-                                       break;
-                                  
-                                  /**
-                                   * Can be edit_own, edit_object
-                                   */
-                                  case 'edit':
-                                       if(in_array($id, $own) && in_array($object.'.edit_own', $privileges))
-                                               return true;
-                                       else {
-                                            /**
-                                             * Get all ancestors and cycle through
-                                             */
-                                            $ancestors = $object_model->get_ancestors('generation');
-                                            foreach($ancestors as $ancestor) {
-                                                 if($this->has_access($ancestor->type . '.edit', $ancestor->id)) {
-                                                      return true;
-                                                 }
-                                            }
-                                       }
-                                       break;
-                             }
-                        }
-			
-			
-		}
-                return false;
+          return false;
 	
 	}
 	
