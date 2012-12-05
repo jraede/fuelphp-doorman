@@ -23,7 +23,9 @@ class User extends Privileged {
 		   'fieldtype'=>'Password'
 	    ),
 	    'login_hash'=>array(
-		   'fieldtype'=>'System'
+		   'fieldtype'=>'System',
+		   'constraint'=>'255',
+		   'coltype'=>'varchar'
 	    )
 	);
 	
@@ -80,7 +82,7 @@ class User extends Privileged {
 	}
 	
 	public static function get_by_login($identifier, $password) {
-		$password = \Auth::hash_password($password);
+		$password = Doorman::hash_password($password);
 		
 		
 		$id_type = \Config::get('doorman.identifier');
@@ -95,7 +97,7 @@ class User extends Privileged {
 	}
 	
 	public static function verify_password($password, $id) {
-		$hashed = \Auth::hash_password($password);
+		$hashed = Doorman::hash_password($password);
 		$check = static::find()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
 		return ($check) ? true : false;
 	}

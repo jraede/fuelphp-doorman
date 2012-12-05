@@ -166,7 +166,7 @@ class Doorman
 		if (empty($identifier) || empty($password)) {
 			return false;
 		}
-		$this->user = \Concerto\Auth_User::get_by_login($identifier, $password);
+		$this->user = User::get_by_login($identifier, $password);
 		
 		return $this->user ?: false;
 	}
