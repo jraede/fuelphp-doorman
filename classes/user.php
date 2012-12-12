@@ -84,7 +84,6 @@ class User extends Privileged {
 	public static function get_by_login($identifier, $password) {
 		$password = Doorman::hash_password($password);
 		
-		
 		$id_type = \Config::get('doorman.identifier');
 		$user = static::find('first', array(
 		    'where'=>array(

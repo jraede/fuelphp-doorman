@@ -86,7 +86,7 @@ class Doorman
 		{
 			if (is_null($this->user) || ($id_type == 'username' && $this->user->username != $identifier) || ($id_type == 'email' && $this->user->email != $identifier))
 			{
-				$this->user = ($id_type == 'email') ? \Concerto\Auth_User::get_by_email($identifier) : \Concerto\Auth_User::get_by_username($identifier);
+				$this->user = ($id_type == 'email') ? User::get_by_email($identifier) : User::get_by_username($identifier);
 			}
 			// return true when login was verified
 			if ($this->user && $this->user->login_hash === $login_hash)
