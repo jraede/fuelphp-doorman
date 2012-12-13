@@ -6,7 +6,7 @@ class DoormanException extends \FuelException {}
 
 
 /**
- * Doorman user authorization class
+ * Doorman user authorization class.
  * 
  * Based on Auth package for FuelPHP
  * 
@@ -80,11 +80,11 @@ class Doorman
 		$identifier    = \Session::get('identifier');
 		$login_hash  = \Session::get('login_hash');
 		$id_type = static::_config('identifier');
-		
+
 		// only worth checking if there's both an identifier and login-hash
 		if ( ! empty($identifier) && ! empty($login_hash))
 		{
-			if (is_null($this->user) || ($id_type == 'username' && $this->user->username != $identifier) || ($id_type == 'email' && $this->user->email != $identifier))
+			if (!$this->user || ($this->user && $id_type == 'username' && $this->user->username != $identifier) || ($id_type == 'email' && $this->user->email != $identifier))
 			{
 				$this->user = ($id_type == 'email') ? User::get_by_email($identifier) : User::get_by_username($identifier);
 			}

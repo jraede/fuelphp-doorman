@@ -1,10 +1,35 @@
 <?php
 namespace Doorman;
 
+/**
+ * This is the doorman user. It holds all the methods for validating a user, checking his/her privileges,
+ * and validating user CRUD functions based on existing database entries.
+ *
+ * Note that if you extend this class and want to add additional ORM properties, you MUST include
+ * the ORM properties on this class in your child class.
+ *
+ * @package  Doorman
+ * @author  Jason Raede <jason@torchedm.com>
+ */
 class User extends Privileged {
+
+	/**
+	 * Name of the users table in the database;
+	 * @var string
+	 */
 	protected static $_table_name = 'users';
+
+	/**
+	 * 1:1 database columns, from the Data Fields package
+	 * @var array
+	 * @see  \DataFields\Model::_db_cols
+	 */
 	protected static $_db_cols = array();
 	
+	/**
+	 * Properties as defined by the Data Fields package
+	 * @var array
+	 */
 	protected static $_properties = array(
 		'id'=>array(
 		    'label'=>'ID',
@@ -32,9 +57,9 @@ class User extends Privileged {
 	protected static $_many_many = array(
 	    'groups'=>array(
 			'key_from' => 'id',
-			'key_through_from' => 'user', // column 1 from the table in between, should match a posts.id
-			'table_through' => 'doorman_group_assignments', // both models plural without prefix in alphabetical order
-			'key_through_to' => 'group', // column 2 from the table in between, should match a users.id
+			'key_through_from' => 'user', 
+			'table_through' => 'doorman_group_assignments', 
+			'key_through_to' => 'group',
 			'model_to' => '\\Doorman\\Group',
 			'key_to' => 'id',
 			'cascade_save' => true,
@@ -51,28 +76,64 @@ class User extends Privileged {
 		    'cascade_delete'=>true
 		)
 	);
-	
 
+	/**
+	 * If there's a config option to return a different user object (must extend this class)
+	 * then it's saved here with late static binding
+	 * @var boolean
+	 */
+	protected static $_user_class = null;
+	
+	/**
+	 * Retrieves the user class and binds it with LSB if it is set to null. 
+	 * @return string	 
+	 */
+	protected static function _user_class() {
+		if(is_null(static::$_user_class)) {
+			$class = \Config::get('doorman.user_class');
+			if($class) static::$_user_class = $class;
+			else static::$_user_class = '\\Doorman\\User';
+		}
+
+		return static::$_user_class;
+	}
 	
 	public static function get_by_username($username) {
-		$user = self::find()->where('username', '=', $username)->get_one();
+		$class = static::_user_class();
+		$user = $class::find()->where('username', '=', $username)->get_one();
 		if($user) return $user;
 		return false;
 	}
 	public static function get_by_email($email) {
-		$user = self::find()->where('email', '=', $email)->get_one();
+		$class = static::_user_class();
+		$user = $class::find()->where('email', '=', $email)->get_one();
 		if($user) return $user;
 		return false;
 	}
 	
+	/**
+	 * Checks if a username is unique, optionally ignoring a user with a certain ID (ie, 
+	 * if they are editing their profile you want to ignore their own username). No need to 
+	 * use the user-defined user class since it would have these same methods anyway.
+	 * @param  string $username
+	 * @param  int $id 
+	 * @return bool
+	 */
 	public static function username_is_unique($username, $id = null) {
 		if($id)
-			$check = self::find()->where('username', '=', $username)->where('id', '!=', $id)->count();
+			$check = static::find()->where('username', '=', $username)->where('id', '!=', $id)->count();
 		else
-			$check = self::find()->where('username', '=', $username)->count();
+			$check = static::find()->where('username', '=', $username)->count();
 		return ($check) ? false : true;
 	}
 	
+	/**
+	 * Checks if an email is unique, optionally ignoring a user with a certain ID. No need
+	 * to use the user-defined user class since it would have these same methods anywa.
+	 * @param  string $email
+	 * @param  int $id   
+	 * @return bool   
+	 */
 	public static function email_is_unique($email, $id = null) {
 		if($id)
 			$check = self::find()->where('email', '=', $email)->where('id', '!=', $id)->count();
@@ -82,10 +143,11 @@ class User extends Privileged {
 	}
 	
 	public static function get_by_login($identifier, $password) {
+		$class = static::_user_class();
 		$password = Doorman::hash_password($password);
 		
 		$id_type = \Config::get('doorman.identifier');
-		$user = static::find('first', array(
+		$user = $class::find('first', array(
 		    'where'=>array(
 			array('password', '=', $password),
 			array($id_type, '=', $identifier)
@@ -95,17 +157,32 @@ class User extends Privileged {
 		return false;
 	}
 	
+	/**
+	 * Makes sure a password is the correct one for a user with a certain ID
+	 * @param  string $password The plain text, pre-hashed password
+	 * @param  int $id 
+	 * @return bool
+	 */
 	public static function verify_password($password, $id) {
 		$hashed = Doorman::hash_password($password);
 		$check = static::find()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
 		return ($check) ? true : false;
 	}
 	
+	/**
+	 * Updates the user's login hash, to prevent the same user from logging in in two
+	 * different places.
+	 * @param  string $hash
+	 */
 	public function update_hash($hash) {
 		$this->login_hash = $hash;
 		$this->save();
 	}
 	
+	/**
+	 * Placeholder function meant for overwriting in child classes.
+	 * @return string
+	 */
 	public function display_name() {
 		return $this->username;
 	}
