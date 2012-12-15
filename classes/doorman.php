@@ -163,6 +163,7 @@ class Doorman
 	 * @return  bool
 	 */
 	protected function validate_user ($identifier = '', $password = '') {
+		echo "validating user with id $identifier, pw $password";
 		if (empty($identifier) || empty($password)) {
 			return false;
 		}
