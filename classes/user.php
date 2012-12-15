@@ -37,15 +37,18 @@ class User extends Privileged {
 		),
 	    'username'=>array(
 		   'label'=>'Username',
-		   'fieldtype'=>'Username'
+		   'fieldtype'=>'Username',
+		   'unique_test'=>'\\Doorman\\User::username_is_unique'
 	    ),
 	    'email'=>array(
 		   'label'=>'E-Mail',
-		   'fieldtype'=>'Email'
+		   'fieldtype'=>'Email',
+		   'unique_test'=>'\\Doorman\\User::email_is_unique'
 	    ),
 	    'password'=>array(
 		   'label'=>'Password',
-		   'fieldtype'=>'Password'
+		   'fieldtype'=>'Password',
+		   'validation'=>array('required')
 	    ),
 	    'login_hash'=>array(
 		   'fieldtype'=>'System',
