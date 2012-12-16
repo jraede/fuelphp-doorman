@@ -96,7 +96,7 @@ class User extends Privileged {
 			$class = \Config::get('doorman.user_class');
 			if($class) static::$_user_class = $class;
 			else static::$_user_class = '\\Doorman\\User';
-		}
+		}echo 'test';
 
 		return static::$_user_class;
 	}
