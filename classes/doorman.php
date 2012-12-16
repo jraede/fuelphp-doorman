@@ -106,6 +106,7 @@ class Doorman
 	 */
 	protected function logged_in() {
 		return ($this->user) ? true : false;
+		echo 'test';
 	}
 	
 	
