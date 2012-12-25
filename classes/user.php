@@ -151,7 +151,6 @@ class User extends Privileged {
 		
 		$id_type = \Config::get('doorman.identifier');
 
-		echo "identifier: $id_type, password: $password";
 		$user = $class::find('first', array(
 		    'where'=>array(
 			array('password', '=', $password),

@@ -25,6 +25,8 @@ class Doorman
 	 * @var \Doorman\User
 	 */
 	protected $user = false;
+
+	protected static $_auth_drivers = array();
 	
 	/**
 	 * Class used to hash passwords
@@ -69,6 +71,12 @@ class Doorman
 
 		throw new \BadMethodCallException('Invalid method: '.get_called_class().'::'.$method);
 	}
+
+	public static function add_auth_driver($driver) {
+		if(class_exists($driver)) {
+			static::$_auth_drivers[] = $driver;
+		}
+	}
 	
 	
 	/**
@@ -92,6 +100,13 @@ class Doorman
 			if ($this->user && $this->user->login_hash === $login_hash)
 			{
 				return true;
+			}
+		}
+		if(count(static::$_auth_drivers)) {
+			foreach(static::$_auth_drivers as $driver) {
+				if($this->user = $driver::check_login()) {
+					return true;
+				}
 			}
 		}
 		// no valid login when still here, ensure empty session and optionally set guest_login
@@ -316,6 +331,12 @@ class Doorman
 	 */
 	public function logout() {
 		$this->user = false;
+		if(count(static::$_auth_drivers)) {
+			foreach(static::$_auth_drivers as $driver) {
+				if(method_exists($driver, 'logout'))
+				$driver::logout();
+			}
+		}
 		\Session::delete('identifier');
 		\Session::delete('login_hash');
 		return true;
