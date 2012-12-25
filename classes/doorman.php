@@ -331,8 +331,8 @@ class Doorman
 	 */
 	public function logout() {
 		$this->user = false;
-		if(count(static::$_auth_drivers)) {
-			foreach(static::$_auth_drivers as $driver) {
+		if(count(Doorman::$_auth_drivers)) {
+			foreach(Doorman::$_auth_drivers as $driver) {
 				if(method_exists($driver, 'logout'))
 				$driver::logout();
 			}
