@@ -105,6 +105,22 @@ class Doorman
 		if(count(static::$_auth_drivers)) {
 			foreach(static::$_auth_drivers as $driver) {
 				if($this->user = $driver::check_login()) {
+
+					/**
+					 * We just use the alternate drivers for authentication. If they're authenticated,
+					 * set the session values here so we don't have to talk to external APIs each time
+					 * check_login is run. HOWEVER, this also means that if you have features that rely
+					 * on connectivity to other networks, like Facebook, that you should run that driver's
+					 * check_login method or equivalent before you try to interact with that API.
+					 */
+					if(static::_config('identifier') == 'username')
+						\Session::set('identifier', $this->user->username);
+					else
+						\Session::set('identifier', $this->user->email);
+					
+					
+					\Session::set('login_hash', $this->create_login_hash());
+					\Session::instance()->rotate();
 					return true;
 				}
 			}
@@ -178,7 +194,6 @@ class Doorman
 	 * @return  bool
 	 */
 	protected function validate_user ($identifier = '', $password = '') {
-		echo "validating user with id $identifier, pw $password";
 		if (empty($identifier) || empty($password)) {
 			return false;
 		}

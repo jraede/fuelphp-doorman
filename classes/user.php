@@ -48,7 +48,8 @@ class User extends Privileged {
 	    'password'=>array(
 		   'label'=>'Password',
 		   'fieldtype'=>'Password',
-		   'validation'=>array('required')
+		   'validation'=>array('required'),
+		   'verification_method'=>'\\Doorman\\User::verify_password'
 	    ),
 	    'login_hash'=>array(
 		   'fieldtype'=>'System',
