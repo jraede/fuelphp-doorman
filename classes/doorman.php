@@ -344,7 +344,7 @@ class Doorman
 	 *
 	 * @return  bool
 	 */
-	public function logout() {
+	protected function logout() {
 		$this->user = false;
 		if(count(Doorman::$_auth_drivers)) {
 			foreach(Doorman::$_auth_drivers as $driver) {
@@ -352,6 +352,8 @@ class Doorman
 				$driver::logout();
 			}
 		}
+
+		\Log::debug('Deleting session variables');
 		\Session::delete('identifier');
 		\Session::delete('login_hash');
 		return true;
