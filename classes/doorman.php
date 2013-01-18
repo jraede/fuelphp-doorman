@@ -252,7 +252,7 @@ class Doorman
 	 * 
 	 * @throws \BadFunctionCallException
 	 */
-	public static function user() {
+	public static function & user() {
 		/**
 		 * Initialize the user if not done already
 		 */
