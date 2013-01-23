@@ -22,7 +22,6 @@ class Privilege extends \Orm\Model {
 			'cascade_delete'=>false
 		)
 	);
-
 }
 
 ?>
