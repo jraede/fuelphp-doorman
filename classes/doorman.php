@@ -27,6 +27,8 @@ class Doorman
 	protected $user = false;
 
 	protected static $_auth_drivers = array();
+
+	protected static $_access_drivers = array();
 	
 	/**
 	 * Class used to hash passwords
@@ -75,6 +77,12 @@ class Doorman
 	public static function add_auth_driver($driver) {
 		if(class_exists($driver)) {
 			static::$_auth_drivers[] = $driver;
+		}
+	}
+
+	public static function add_access_driver($driver) {
+		if(class_exists($driver)) {
+			static::$_access_drivers[] = $driver;
 		}
 	}
 	
@@ -168,6 +176,7 @@ class Doorman
 	 * @return  bool
 	 */
 	protected function login($identifier = '', $password = '') {
+
 		if ( ! ($this->user = $this->validate_user($identifier, $password))) {
 			$this->user = false;
 			\Session::delete('identifier');
@@ -282,6 +291,15 @@ class Doorman
 	 * @return bool
 	 */
 	protected function has_access($object, $action, $id) {
+
+		if(count(static::$_access_drivers)) {
+			foreach(static::$_access_drivers as $driver) {
+				if($driver::has_access($object, $action, $id)) {
+					return true;
+				}
+			}
+		}
+
 		$privileges = $this->get_privileges();
 		if(in_array('all', $privileges)) return true;
 		/**

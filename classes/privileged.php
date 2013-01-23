@@ -35,12 +35,11 @@ abstract class Privileged extends \DataFields\Model {
 	 * @return  array
 	 */
 	public function get_privileges() {
-		if($this->_privileges) return $this->_privileges;
-		
+		if(!empty($this->_privileges)) return $this->_privileges;
 		
 		$privileges = $this->privileges ?: array();
 
-		if(get_called_class() == '\\Concerto\\Auth_User') {
+		if($this instanceof \Doorman\User) {
 			foreach($this->groups as $group) {
 				$privileges = array_merge($privileges, $group->privileges);
 			}
@@ -60,7 +59,7 @@ abstract class Privileged extends \DataFields\Model {
 		 *
 		 * @see  \Doorman\Doorman::has_access()
 		 */
-		if(get_called_class() == '\\Doorman\\User') {
+		if($this instanceof \Doorman\User) {
 			$list = array_merge($list, \Config::get('doorman.user_privileges'));
 			$list = array_merge($list, \Config::get('doorman.guest_privileges'));
 		}

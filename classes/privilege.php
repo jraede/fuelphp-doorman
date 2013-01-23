@@ -5,7 +5,7 @@ namespace Doorman;
  */
 class Privilege extends \Orm\Model {
 	protected static $_properties = array('id', 'object', 'action', 'object_id', 'group_id', 'user_id');
-	protected static $_table_name = 'privileges';
+	protected static $_table_name = 'doorman_privileges';
 	protected static $_belongs_to = array(
 		'group'=>array(
 			'key_from' =>'group_id',
