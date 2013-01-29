@@ -377,5 +377,13 @@ class Doorman
 		return true;
 	}
 
+
+
+	protected function set_user($user) {
+		if($user instanceof \Doorman\User) {
+			$this->user =& $user;
+		}
+	}
+
 	
 }
