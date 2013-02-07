@@ -47,7 +47,7 @@ class Controller extends \Controller_Template {
 		\Doorman::logout();
 		\Session::set_flash('form_message', 'You have logged out successfully!');
 		\Session::set_flash('form_message_class', 'success');
-		return Response::redirect('user/login');
+		return Response::redirect('/login');
 	}
 
 	protected function create_update_form($object, $form_type) {
@@ -178,7 +178,7 @@ class Controller extends \Controller_Template {
 			\Session::set_flash('form_redirect', '/user/settings');
 			\Session::set_flash('form_message', 'Please log in to continue.');
 			\Session::set_flash('form_message_class', 'error');
-			return \Response::redirect('user/login');
+			return \Response::redirect('/login');
 		}
 		$this->create_update_form(\Doorman::user(), 'edit');
 
