@@ -258,8 +258,8 @@ class Doorman
 	
 	/**
 	 * Allows methods to be called on user publicly without modifying the user
-	 * 
-	 * @throws \BadFunctionCallException
+	 *
+	 * @return  mixed an object of the user class defined by the config settings
 	 */
 	public static function & user() {
 		/**
@@ -269,9 +269,14 @@ class Doorman
 			static::$_instance->check_login();
 		
 		/**
-		 * If still no user, then just return false
+		 * If still no user, then return a blank user object to avoid "call to method on
+		 * non-object" errors
 		 */
-		if(!static::$_instance->user) return false;
+		if(!static::$_instance->user) {
+			$user_class = static::_config('user_class');
+
+			static::$_instance->user = $user_class::forge();
+		}
 		
 		return static::$_instance->user;
 	}
