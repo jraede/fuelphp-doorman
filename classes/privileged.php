@@ -60,8 +60,8 @@ abstract class Privileged extends \DataFields\Model {
 		 * @see  \Doorman\Doorman::has_access()
 		 */
 		if($this instanceof \Doorman\User) {
-			$list = array_merge($list, \Config::get('doorman.user_privileges'));
-			$list = array_merge($list, \Config::get('doorman.guest_privileges'));
+			$list = array_merge($list, (is_array(\Config::get('doorman.user_privileges')) ? \Config::get('doorman.user_privileges') : array()));
+			$list = array_merge($list, (is_array(\Config::get('doorman.guest_privileges')) ? \Config::get('doorman.guest_privileges') : array()));
 		}
 		
 		$this->_privileges = $list;
