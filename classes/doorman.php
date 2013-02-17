@@ -258,8 +258,8 @@ class Doorman
 	
 	/**
 	 * Allows methods to be called on user publicly without modifying the user
-	 * 
-	 * @throws \BadFunctionCallException
+	 *
+	 * @return  mixed an object of the user class defined by the config settings
 	 */
 	public static function & user() {
 		/**
@@ -269,14 +269,13 @@ class Doorman
 			static::$_instance->check_login();
 		
 		/**
-		 * If still no user, then we just set the user as a blank user model
-		 *
-		 * This method should really only be called after verifying the
-		 * user with \Doorman::check_login(). It returns a blank user object
-		 * to avoid "called to method X on non-object" errors
+		 * If still no user, then return a blank user object to avoid "call to method on
+		 * non-object" errors
 		 */
 		if(!static::$_instance->user) {
-			static::$_instance->user = \Model\User::forge();
+			$user_class = static::_config('user_class');
+
+			static::$_instance->user = $user_class::forge();
 		}
 		
 		return static::$_instance->user;
@@ -306,7 +305,7 @@ class Doorman
 			}
 		}
 
-		$privileges = $this->get_privileges();
+		$privileges = \Doorman::user()->get_privileges();
 		if(in_array('all', $privileges)) return true;
 		/**
 		 * If they have that privilege without an object id, they have it for all objects
@@ -323,43 +322,6 @@ class Doorman
 		
           return false;
 	
-	}
-	
-	protected function get_privileges() {
-		if(static::$_privileges) return static::$_privileges;
-		
-		
-		if(!$this->user) static::check_login();
-		
-		/**
-		 * If there's no user, privileges are the list of guest privileges from config
-		 */
-		if(!$this->user) {
-			$privileges = static::_config('guest_privileges');
-		}
-		
-		/**
-		 * Otherwise get the privilege list from the current user
-		 */
-		else
-			$privileges = $this->user->get_privileges();
-		
-		if(in_array('all', $privileges)) return true;
-		
-		/**
-		 * Now expand all object-independent privileges, like object.create, to include all objects
-		 */
-		$types = \Concerto\Model\Object::get_all_types();
-		foreach($privileges as $privilege) {
-			$split = explode('.', $privilege);
-			if($split[0] == 'object') {
-				foreach($types as $type) {
-					$privileges[] = $type.'.'.$split[1];
-				}
-			}
-		}
-		static::$_privileges = $privileges;
-		return $privileges;
 	}
 	
 	
