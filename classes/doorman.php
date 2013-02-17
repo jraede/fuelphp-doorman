@@ -269,9 +269,15 @@ class Doorman
 			static::$_instance->check_login();
 		
 		/**
-		 * If still no user, then just return false
+		 * If still no user, then we just set the user as a blank user model
+		 *
+		 * This method should really only be called after verifying the
+		 * user with \Doorman::check_login(). It returns a blank user object
+		 * to avoid "called to method X on non-object" errors
 		 */
-		if(!static::$_instance->user) return false;
+		if(!static::$_instance->user) {
+			static::$_instance->user = \Model\User::forge();
+		}
 		
 		return static::$_instance->user;
 	}
