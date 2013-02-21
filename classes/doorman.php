@@ -175,7 +175,7 @@ class Doorman
 	 * @param   string
 	 * @return  bool
 	 */
-	protected function login($identifier = '', $password = '') {
+	protected function login($identifier = '', $password = '', $use_hash = true) {
 
 		if ( ! ($this->user = $this->validate_user($identifier, $password))) {
 			$this->user = false;
@@ -189,8 +189,8 @@ class Doorman
 		else
 			\Session::set('identifier', $this->user->email);
 		
-		
-		\Session::set('login_hash', $this->create_login_hash());
+		if($use_hash) 
+			\Session::set('login_hash', $this->create_login_hash());
 		\Session::instance()->rotate();
 		
 		
