@@ -17,48 +17,40 @@ class DoormanException extends \FuelException {}
 class Doorman
 {
 
-	protected static $_instance = null;
-	
-	/**
-	 * Current logged in user
-	 * 
-	 * @var \Doorman\User
-	 */
-	protected $user = false;
-
-	protected static $_auth_drivers = array();
-
-	protected static $_access_drivers = array();
-	
-	/**
-	 * Class used to hash passwords
-	 */
-	protected $hasher;
-	
-	protected static $_privileges;
-
+	protected static $_instances = array();
+	protected static $_active_instance = false;
 
 	/**
 	 * Initialize the class. Called on bootstrap
 	 */
-	public static function _init() {
-		static::forge();
+	public static function instance($name = null, $config_override = null) {
+		$name = $name ?: 'default';
+		if(array_key_exists($name, static::$_instances)) {
+			return static::$_instances[$name];
+		}
+
+
+		$config = \Config::get('doorman.'.$name);
+
+		if(!$config) {
+			$config = \Config::get('doorman.default');
+		}
+
+
+		if(is_array($config_override)) {
+			$config = \Arr::merge($config, $config_override);
+		}
+
+		if(!is_array($config)) {
+			throw new DoormanException('Configuration not found.');
+		}
+
+		static::$_instances[$name] = new static($name, $config);
+		return static::$_instances[$name];
 	}
 
-	public static function forge() {
-		static::$_instance = new static();
-	}
-	
-	public static function instance() {
-		return static::$_instance;
-	}
-	
-	protected static function _config($value) {
-		return \Config::get('doorman.'.$value);
-	}
-	
 	/**
-	 * Magic method used to retrieve driver instances and check them for validity
+	 * Magic method used to call instance methods on the default instance
 	 *
 	 * @param   string
 	 * @param   array
@@ -66,53 +58,192 @@ class Doorman
 	 * @throws  BadMethodCallException
 	 */
 	public static function __callStatic($method, $args) {
+		$instances = array_values(static::$_instances);
+		$instance = $instances[0];
+		if(!$instance) {
+			throw new \BadMethodCallException('Invalid method: '.get_called_class().'::'.$method);
+		}
+
 		$args = array_pad($args, 3, null);
-		if(method_exists(static::$_instance, $method)) {
-			return call_user_func_array(array(static::$_instance, $method), $args);
+		if(method_exists($instance, $method)) {
+			return call_user_func_array(array($instance, $method), $args);
 		}
 
 		throw new \BadMethodCallException('Invalid method: '.get_called_class().'::'.$method);
 	}
 
-	public static function add_auth_driver($driver) {
+
+	protected $_name;
+
+	/**
+	 * Current logged in user
+	 * 
+	 * @var \Doorman\User
+	 */
+	protected $_user = false;
+
+	protected $_auth_drivers = array();
+
+	protected $_access_drivers = array();
+	
+	protected $_config = array();
+	/**
+	 * Class used to hash passwords
+	 */
+	protected $_hasher;
+	
+	protected $_privileges;
+
+	/**
+	 * Should only be called using static::instance()
+	 */
+	protected function __construct($name, $config) {
+		$this->_name = $name;
+		$this->_config = $config;
+	}
+
+
+	public function __call($method, $args) {
+		$args = array_pad($args, 3, null);
+		if(substr($method, 0, 1) == '_') { // Protected method
+			throw new \BadMethodCallException('Cannot call protected method '.$method.' through the magic method implementation');
+		}
+
+		if(method_exists($this, $method)) {
+			return call_user_func_array(array($this, $method), $args);
+		}
+
+		throw new \BadMethodCallException('Invalid method: '.get_called_class().'::'.$method);
+	}
+	
+	/**
+	 * Sets a config value on the fieldset
+	 *
+	 * @param   string
+	 * @param   mixed
+	 * @return  Fieldset  this, to allow chaining
+	 */
+	protected function set_config($config, $value = null) {
+		$config = is_array($config) ? $config : array($config => $value);
+		foreach ($config as $key => $value)
+		{
+			if (strpos($key, '.') === false)
+			{
+				$this->_config[$key] = $value;
+			}
+			else
+			{
+				\Arr::set($this->_config, $key, $value);
+			}
+		}
+
+		return $this;
+	}
+
+	/**
+	 * Get a single or multiple config values by key
+	 *
+	 * @param   string|array  a single key or multiple in an array, empty to fetch all
+	 * @param   mixed         default output when config wasn't set
+	 * @return  mixed|array   a single config value or multiple in an array when $key input was an array
+	 */
+	protected function get_config($key = null, $default = null) {
+		if ($key === null)
+		{
+			return $this->_config;
+		}
+
+		if (is_array($key))
+		{
+			$output = array();
+			foreach ($key as $k)
+			{
+				$output[$k] = $this->get_config($k, $default);
+			}
+			return $output;
+		}
+
+		if (strpos($key, '.') === false)
+		{
+			return array_key_exists($key, $this->_config) ? $this->_config[$key] : $default;
+		}
+		else
+		{
+			return \Arr::get($this->_config, $key, $default);
+		}
+	}
+	
+	
+
+	protected function add_auth_driver($driver) {
 		if(class_exists($driver)) {
-			static::$_auth_drivers[] = $driver;
+			$this->_auth_drivers[] = $driver;
 		}
 	}
 
-	public static function add_access_driver($driver) {
+	protected function add_access_driver($driver) {
 		if(class_exists($driver)) {
-			static::$_access_drivers[] = $driver;
+			$this->_access_drivers[] = $driver;
 		}
 	}
-	
-	
+
+	protected function _session_get($var) {
+		\Log::debug('getting '.$this->_name.'_'.$var);
+		return \Session::get($this->_name.'_'.$var);
+	}
+
+	protected function _session_set($var, $val) {
+		\Session::set($this->_name.'_'.$var, $val);
+		\Log::debug('Setting '.$this->_name.'_'.$var.' to '.$val);
+	}
+
+	protected function _session_delete($var) {
+		\Session::delete($this->_name.'_'.$var);
+		\Log::debug('deleting session');
+	}
+
 	/**
 	 * Check for login
 	 *
 	 * @return  bool
 	 */
 	protected function check_login() {
-		$identifier    = \Session::get('identifier');
-		$login_hash  = \Session::get('login_hash');
-		$id_type = static::_config('identifier');
+		$identifier    = $this->_session_get('identifier');
+		\Log::debug('Got identifier from session: '.$identifier);
+		$id_type = $this->get_config('identifier');
+		$user_class = $this->get_config('user_class');
 
-		// only worth checking if there's both an identifier and login-hash
-		if ( ! empty($identifier) && ! empty($login_hash))
-		{
-			if (!$this->user || ($this->user && $id_type == 'username' && $this->user->username != $identifier) || ($id_type == 'email' && $this->user->email != $identifier))
-			{
-				$this->user = ($id_type == 'email') ? User::get_by_email($identifier) : User::get_by_username($identifier);
+
+		// only worth checking if there's an identifier
+		if (!empty($identifier)) {
+			if (!$this->_user || ($this->_user && $this->_user->$id_type != $identifier)) {
+				
+				$method = 'find_by_'.$id_type;
+				$this->_user = $user_class::$method($identifier);
 			}
-			// return true when login was verified
-			if ($this->user && $this->user->login_hash === $login_hash)
-			{
+
+
+			if($this->get_config('use_login_hash')) {
+				$login_hash  = $this->_session_get('login_hash');
+
+				if ($this->_user && $this->_user->login_hash === $login_hash) {
+					return true;
+				}
+			}
+			else if($this->_user) {
 				return true;
 			}
+			
 		}
-		if(count(static::$_auth_drivers)) {
-			foreach(static::$_auth_drivers as $driver) {
-				if($this->user = $driver::check_login()) {
+
+		/**
+		 * Now check alternative authorization drivers on this doorman instance.
+		 *
+		 * E.g., Facebook connect
+		 */
+		if(count($this->_auth_drivers)) {
+			foreach($this->_auth_drivers as $driver) {
+				if($this->_user = $driver::check_login()) {
 
 					/**
 					 * We just use the alternate drivers for authentication. If they're authenticated,
@@ -121,22 +252,22 @@ class Doorman
 					 * on connectivity to other networks, like Facebook, that you should run that driver's
 					 * check_login method or equivalent before you try to interact with that API.
 					 */
-					if(static::_config('identifier') == 'username')
-						\Session::set('identifier', $this->user->username);
-					else
-						\Session::set('identifier', $this->user->email);
+					$this->_session_set('identifier', $this->_user->{$this->get_config('identifier')});
 					
 					
-					\Session::set('login_hash', $this->create_login_hash());
+					if($this->get_config('use_login_hash')) {
+						$this->_session_set('login_hash', $this->create_login_hash());
+					}
+					
 					\Session::instance()->rotate();
 					return true;
 				}
 			}
 		}
 		// no valid login when still here, ensure empty session and optionally set guest_login
-		$this->user = false;
-		\Session::delete('identifier');
-		\Session::delete('login_hash');
+		$this->_user = false;
+		$this->_session_delete('identifier');
+		$this->_session_delete('login_hash');
 		return false;
 	}
 	
@@ -144,29 +275,9 @@ class Doorman
 	 * Checks if the login has been verified, doesn't try to verify like check_login
 	 */
 	protected function logged_in() {
-		return ($this->user) ? true : false;
+		return ($this->_user) ? true : false;
 	}
 	
-	
-	/**
-	 * Validates login from HTTP POST request
-	 * 
-	 * @see \Doorman::login()
-	 * @return \InternalResponse
-	 */
-	protected function validate_login() {
-		$validate = \InternalResponse::forge();
-		$identifier = static::_config('identifier');
-		$check = \Auth::login(\Input::post($identifier), \Input::post('password'));
-		if(!$check) {
-			$validate->error('Login failed');
-		}
-		else {
-			$validate->success('Login successful');
-		}
-		
-		return $validate;
-	}
 	
 	/**
 	 * Log in user
@@ -177,19 +288,19 @@ class Doorman
 	 */
 	protected function login($identifier = '', $password = '') {
 
-		if ( ! ($this->user = $this->validate_user($identifier, $password))) {
-			$this->user = false;
-			\Session::delete('identifier');
-			\Session::delete('login_hash');
+		if ( ! ($this->_user = $this->validate_user($identifier, $password))) {
+			$this->_user = false;
+			$this->_session_delete('identifier');
+			$this->_session_delete('login_hash');
 			return false;
 		}
 		
-		if(static::_config('identifier') == 'username')
-			\Session::set('identifier', $this->user->username);
-		else
-			\Session::set('identifier', $this->user->email);
+		$this->_session_set('identifier', $this->_user->{$this->get_config('identifier')});
 		
-		\Session::set('login_hash', $this->create_login_hash());
+
+		if($this->get_config('use_login_hash')) {
+			$this->_session_set('login_hash', $this->create_login_hash());
+		}
 		\Session::instance()->rotate();
 		
 		
@@ -205,9 +316,10 @@ class Doorman
 		if (empty($identifier) || empty($password)) {
 			return false;
 		}
-		$this->user = User::get_by_login($identifier, $password);
+		$user_class = $this->get_config('user_class');
+		$this->_user = $user_class::get_by_login($identifier, $password);
 		
-		return $this->user ?: false;
+		return $this->_user ?: false;
 	}
 	
 	/**
@@ -217,16 +329,16 @@ class Doorman
 	 */
 	protected function create_login_hash () {
 		
-		if (empty($this->user))
+		if (empty($this->_user))
 		{
-			throw new \AuthException ('User not logged in, can\'t create login hash.', 10);
+			throw new \DoormanException ('User not logged in, can\'t create login hash.', 10);
 		}
 
 		$last_login = \Date::forge()->get_timestamp();
-		$login_hash = sha1(static::_config('hash_salt').$this->user->username.$last_login);
+		$login_hash = sha1($this->get_config('hash_salt').$this->_user->{$this->get_config('identifier')}.$last_login);
 		
 		
-		$this->user->update_hash($login_hash);
+		$this->_user->update_hash($login_hash);
 
 		return $login_hash;
 	}
@@ -238,7 +350,7 @@ class Doorman
 	 * @return  string
 	 */
 	protected function hash_password($password) {
-		return base64_encode($this->hasher()->pbkdf2($password, static::_config('hash_salt'), 10000, 32));
+		return base64_encode($this->hasher()->pbkdf2($password, $this->get_config('hash_salt'), 10000, 32));
 	}
 	
 	/**
@@ -250,9 +362,9 @@ class Doorman
 		if ( ! class_exists('PHPSecLib\\Crypt_Hash', false)) {
 			import('phpseclib/Crypt/Hash', 'vendor');
 		}
-		is_null($this->hasher) and $this->hasher = new \PHPSecLib\Crypt_Hash();
+		is_null($this->_hasher) and $this->_hasher = new \PHPSecLib\Crypt_Hash();
 
-		return $this->hasher;
+		return $this->_hasher;
 	}
 	
 	/**
@@ -260,34 +372,28 @@ class Doorman
 	 *
 	 * @return  mixed an object of the user class defined by the config settings
 	 */
-	public static function & user() {
+	protected function & user() {
 		/**
 		 * Initialize the user if not done already
 		 */
-		if(!static::$_instance->user)
-			static::$_instance->check_login();
+		if(!$this->_user)
+			$this->check_login();
 		
 		/**
 		 * If still no user, then return a blank user object to avoid "call to method on
 		 * non-object" errors
 		 */
-		if(!static::$_instance->user) {
-			$user_class = static::_config('user_class');
+		if(!$this->_user) {
+			$user_class = $this->get_config('user_class');
 
-			static::$_instance->user = $user_class::forge();
+			$this->_user = $user_class::forge();
 		}
 		
-		return static::$_instance->user;
+		return $this->_user;
 	}
 	
 	/**
 	 * Checks if the current user can perform an action on an object.
-	 * 
-	 * If the object has an ID (ie, one of the Concerto objects), access can be granted in the following ways:
-	 * 
-	 * 1) The user has the **_own privilege and is the owner of the object
-	 * 2) The user has the **_offspring privilege and has the edit privilege for an object higher up in the hierarchy
-	 * 3) The user has the ** privilege, and can perform this action on all objects
 	 * 
 	 * @param string $object
 	 * @param string $action
@@ -296,15 +402,15 @@ class Doorman
 	 */
 	protected function has_access($object, $action, $id) {
 
-		if(count(static::$_access_drivers)) {
-			foreach(static::$_access_drivers as $driver) {
+		if(count($this->_access_drivers)) {
+			foreach($this->_access_drivers as $driver) {
 				if($driver::has_access($object, $action, $id)) {
 					return true;
 				}
 			}
 		}
 
-		$privileges = \Doorman::user()->get_privileges();
+		$privileges = $this->_user()->get_privileges();
 		if(in_array('all', $privileges)) return true;
 		/**
 		 * If they have that privilege without an object id, they have it for all objects
@@ -330,17 +436,17 @@ class Doorman
 	 * @return  bool
 	 */
 	protected function logout() {
-		$this->user = false;
-		if(count(Doorman::$_auth_drivers)) {
-			foreach(Doorman::$_auth_drivers as $driver) {
+		$this->_user = false;
+		if(count($this->_auth_drivers)) {
+			foreach($this->_auth_drivers as $driver) {
 				if(method_exists($driver, 'logout'))
 				$driver::logout();
 			}
 		}
 
 		\Log::debug('Deleting session variables');
-		\Session::delete('identifier');
-		\Session::delete('login_hash');
+		$this->_session_delete('identifier');
+		$this->_session_delete('login_hash');
 		return true;
 	}
 
@@ -348,7 +454,7 @@ class Doorman
 
 	protected function set_user($user) {
 		if($user instanceof \Doorman\User) {
-			$this->user =& $user;
+			$this->_user =& $user;
 		}
 	}
 

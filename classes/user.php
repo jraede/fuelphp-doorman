@@ -25,6 +25,15 @@ class User extends Privileged {
 	 * @see  \DataFields\Model::_db_cols
 	 */
 	protected static $_db_cols = array();
+
+
+	protected static $_doorman_instance = 'default';
+
+	public static function set_doorman_instance($instance) {
+		static::$_doorman_instance = $instance;
+	}
+
+
 	
 	/**
 	 * Properties as defined by the Data Fields package
@@ -88,6 +97,8 @@ class User extends Privileged {
 	 */
 	protected static $_user_class = null;
 	
+
+
 	/**
 	 * Retrieves the user class and binds it with LSB if it is set to null. 
 	 * @return string	 
@@ -140,24 +151,27 @@ class User extends Privileged {
 	 */
 	public static function email_is_unique($email, $id = null) {
 		if($id)
-			$check = self::find()->where('email', '=', $email)->where('id', '!=', $id)->count();
+			$check = static::find()->where('email', '=', $email)->where('id', '!=', $id)->count();
 		else
-			$check = self::find()->where('email', '=', $email)->count();
+			$check = static::find()->where('email', '=', $email)->count();
 		return ($check) ? false : true;
 	}
 	
 	public static function get_by_login($identifier, $password) {
-		$class = static::_user_class();
-		$password = Doorman::hash_password($password);
 		
-		$id_type = \Config::get('doorman.identifier');
+		$doorman = \Doorman::instance(static::$_doorman_instance);
+		$class = $doorman->get_config('user_class');
+		$password = $doorman->hash_password($password);
+		
+		$id_type = $doorman->get_config('identifier');
 
 		$user = $class::find('first', array(
-		    'where'=>array(
-			array('password', '=', $password),
-			array($id_type, '=', $identifier)
-		    )
+			'where'=>array(
+				array('password', '=', $password),
+				array($id_type, '=', $identifier)
+			)
 		));
+
 		if($user) return $user;
 		return false;
 	}
@@ -169,7 +183,8 @@ class User extends Privileged {
 	 * @return bool
 	 */
 	public static function verify_password($password, $id) {
-		$hashed = Doorman::hash_password($password);
+		$doorman = \Doorman::instance(static::$_doorman_instance);
+		$hashed = $doorman->hash_password($password);
 		$check = static::find()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
 		return ($check) ? true : false;
 	}
