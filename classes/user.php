@@ -33,6 +33,11 @@ class User extends Privileged {
 		static::$_doorman_instance = $instance;
 	}
 
+	public function get_doorman_config($config) {
+		$doorman = \Doorman::instance(static::$_doorman_instance);
+		return $doorman->get_config($config); 
+	}
+
 
 	
 	/**
