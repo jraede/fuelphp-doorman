@@ -33,6 +33,12 @@ class User extends Privileged {
 		static::$_doorman_instance = $instance;
 	}
 
+
+	public function get_doorman_instance() {
+		return \Doorman::instance(static::$_doorman_instance);
+	}
+
+	
 	public function get_doorman_config($config) {
 		$doorman = \Doorman::instance(static::$_doorman_instance);
 		return $doorman->get_config($config); 
@@ -51,17 +57,17 @@ class User extends Privileged {
 		),
 	    'username'=>array(
 		   'label'=>'Username',
-		   'fieldtype'=>'Username',
+		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Username',
 		   'unique_test'=>'\\Doorman\\User::username_is_unique'
 	    ),
 	    'email'=>array(
 		   'label'=>'E-Mail',
-		   'fieldtype'=>'Email',
+		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Email',
 		   'unique_test'=>'\\Doorman\\User::email_is_unique'
 	    ),
 	    'password'=>array(
 		   'label'=>'Password',
-		   'fieldtype'=>'Password',
+		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Password',
 		   'validation'=>array('required'),
 		   'verification_method'=>'\\Doorman\\User::verify_password'
 	    ),
@@ -190,6 +196,7 @@ class User extends Privileged {
 	public static function verify_password($password, $id) {
 		$doorman = \Doorman::instance(static::$_doorman_instance);
 		$hashed = $doorman->hash_password($password);
+		\Log::debug('Checking for password '.$password.' where id is '.$id);
 		$check = static::find()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
 		return ($check) ? true : false;
 	}
