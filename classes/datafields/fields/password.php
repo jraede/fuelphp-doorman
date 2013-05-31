@@ -18,7 +18,7 @@ class Password extends \DataFields\Fields\Base {
 				break;
 			case 'verify':
 			default:
-				$fieldset->add($this->_prop, '[password]', array('type'=>'password'), array());
+				$fieldset->add($this->_prop, $this->_settings['label'], array('type'=>'password'), array());
 				break;
 			case 'edit':
 				$fieldset->add($this->_prop.'[password]', 'Current '.$this->_settings['label'], array('type'=>'password'), array());
@@ -127,11 +127,12 @@ class Password extends \DataFields\Fields\Base {
 	
 	public function multi($formType = null) {
 		switch($formType) {
-			case 'verify':
+			
 			case 'edit':
 			case 'create':
 				return true;
 				break;
+			case 'verify':
 			default:
 				return false;
 				break;

@@ -207,6 +207,7 @@ class User extends Privileged {
 	 * @param  string $hash
 	 */
 	public function update_hash($hash) {
+		
 		\Log::debug('Updating hash');
 		$this->login_hash = $hash;
 		$this->save();

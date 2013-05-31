@@ -295,6 +295,13 @@ class Doorman
 			return false;
 		}
 		
+		$this->set_logged_in($this->_user);
+	}
+	
+
+	public function set_logged_in($user) {
+		
+		$this->set_user($user);
 		$this->_session_set('identifier', $this->_user->{$this->get_config('identifier')});
 		
 
@@ -302,11 +309,7 @@ class Doorman
 			$this->_session_set('login_hash', $this->create_login_hash());
 		}
 		\Session::instance()->rotate();
-		
-		
-		return true;
 	}
-	
 	/**
 	 * Check the user exists before logging in
 	 *
@@ -372,7 +375,7 @@ class Doorman
 	 *
 	 * @return  mixed an object of the user class defined by the config settings
 	 */
-	protected function & user() {
+	protected function user() {
 		/**
 		 * Initialize the user if not done already
 		 */
@@ -453,8 +456,10 @@ class Doorman
 
 
 	protected function set_user($user) {
+
 		if($user instanceof \Doorman\User) {
-			$this->_user =& $user;
+			
+			$this->_user = $user;
 		}
 	}
 
