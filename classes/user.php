@@ -212,6 +212,7 @@ class User extends Privileged {
 		
 		\Log::debug('Updating hash');
 		$this->login_hash = $hash;
+		\Log::debug('About to save with hash set to '.$this->login_hash);
 		$this->save();
 	}
 	
