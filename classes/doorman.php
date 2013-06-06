@@ -296,6 +296,7 @@ class Doorman
 		}
 		
 		$this->set_logged_in($this->_user);
+		return true;
 	}
 	
 
