@@ -415,12 +415,17 @@ class Doorman
 			}
 		}
 
-		$privileges = $this->_user()->get_privileges();
+		$privileges = $this->user()->get_privileges();
 		if(in_array('all', $privileges)) return true;
 		/**
 		 * If they have that privilege without an object id, they have it for all objects
 		 */
 		elseif(in_array($object.'.all', $privileges)) return true;
+
+		/**
+		 * If they have all privileges for that object id, return true
+		 */
+		elseif(in_array($object.'.all.'.$id, $privileges)) return true;
 		/**
 		 * If they have that privilege without an object id, they have it for all objects
 		 */
