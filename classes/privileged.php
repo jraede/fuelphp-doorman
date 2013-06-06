@@ -82,23 +82,25 @@ abstract class Privileged extends \DataFields\Model {
 		 * Make sure the string is formed correctly
 		 */
 		if($privilege != 'all' && !preg_match('/([A-Za-z_]+)(\.)([A-Za-z_]+)((\.)([0-9]+))?/', $privilege)) {
-			$response->error('Malformed privilege string');
+			throw new \Exception('Malformed privilege string: '.$privilege);
 		}
 		else {
 			$privileges = $this->get_privileges();
 			if(in_array($privilege, $privileges)) 
-				   $response->success();
+				return true;
 			else {
 				$split = explode('.', $privilege);
 				$object = $split[0];
 				$action = $split[1];
-				
-				$this->privileges[] = Auth_Privilege::forge(array('object'=>$object, 'action'=>$action));
+				$id = $split[2];
+				$info = static::relations('privileges');
+		
+				$privilege_class = $info->model_to;
+				$this->privileges[] = $privilege_class::forge(array('object'=>$object, 'action'=>$action, 'object_id'=>$id));
 				$this->save();
-				$response->success();
+				return true;
 			}
 		}
-		return $response;
 		
 	}
 
