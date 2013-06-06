@@ -229,6 +229,7 @@ class Doorman
 				if ($this->_user && $this->_user->login_hash === $login_hash) {
 					return true;
 				}
+				\Log::debug('Mismatched login hash');
 			}
 			else if($this->_user) {
 				return true;
@@ -296,6 +297,7 @@ class Doorman
 		}
 		
 		$this->set_logged_in($this->_user);
+		return true;
 	}
 	
 
@@ -340,7 +342,7 @@ class Doorman
 		$last_login = \Date::forge()->get_timestamp();
 		$login_hash = sha1($this->get_config('hash_salt').$this->_user->{$this->get_config('identifier')}.$last_login);
 		
-		
+		\Log::debug('Updating hash to '.$login_hash);
 		$this->_user->update_hash($login_hash);
 
 		return $login_hash;

@@ -175,7 +175,9 @@ class User extends Privileged {
 		$password = $doorman->hash_password($password);
 		
 		$id_type = $doorman->get_config('identifier');
-
+		\Log::debug('User class: '.$class);
+		\Log::debug('Id type: '.$id_type);
+		\Log::debug('Password: '.$password);
 		$user = $class::find('first', array(
 			'where'=>array(
 				array('password', '=', $password),
@@ -210,6 +212,7 @@ class User extends Privileged {
 		
 		\Log::debug('Updating hash');
 		$this->login_hash = $hash;
+		\Log::debug('About to save with hash set to '.$this->login_hash);
 		$this->save();
 	}
 	
