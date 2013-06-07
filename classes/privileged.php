@@ -96,12 +96,47 @@ abstract class Privileged extends \DataFields\Model {
 				$info = static::relations('privileges');
 		
 				$privilege_class = $info->model_to;
-				$this->privileges[] = $privilege_class::forge(array('object'=>$object, 'action'=>$action, 'object_id'=>$id));
+				$new_privilege = $privilege_class::forge(array('object'=>$object, 'action'=>$action, 'object_id'=>$id));
+				$new_privilege->save();
+
+				$this->privileges[] = $new_privilege;
 				$this->save();
-				return true;
+				return $new_privilege->id;
 			}
 		}
 		
+	}
+
+
+	public function revoke_privilege($privilege) {
+		$info = static::relations('privileges');
+		$split = explode('.', $privilege);
+		$privilege_class = $info->model_to;
+		$query = $privilege_class::query();
+		if($split[0]) {
+			$query->where('object', $split[0]);
+		}
+		if($split[1]) {
+			$query->where('action', $split[1]);
+		}
+		if($split[2]) {
+			$query->where('object_id', $split[2]);
+		}
+
+		// Is this a group or a user
+		if($this instanceof \Doorman\User) {
+			$query->where('user_id', '=', $this->id);
+		}
+		else {
+			$query->where('group_id', '=', $this->id);
+		}
+
+		$privilege_to_revoke = $query->get_one();
+
+		if($privilege_to_revoke) {
+			$privilege_to_revoke->delete();
+		}
+
 	}
 
 
