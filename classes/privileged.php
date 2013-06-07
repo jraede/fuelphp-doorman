@@ -96,9 +96,12 @@ abstract class Privileged extends \DataFields\Model {
 				$info = static::relations('privileges');
 		
 				$privilege_class = $info->model_to;
-				$this->privileges[] = $privilege_class::forge(array('object'=>$object, 'action'=>$action, 'object_id'=>$id));
+				$new_privilege = $privilege_class::forge(array('object'=>$object, 'action'=>$action, 'object_id'=>$id));
+				$new_privilege->save();
+
+				$this->privileges[] = $new_privilege;
 				$this->save();
-				return true;
+				return $new_privilege->id;
 			}
 		}
 		
