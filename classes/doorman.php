@@ -185,6 +185,9 @@ class Doorman
 		if(class_exists($driver)) {
 			$this->_access_drivers[] = $driver;
 		}
+		else {
+			throw new \Exception('Class '.$driver.' does not exist');
+		}
 	}
 
 	protected function _session_get($var) {
