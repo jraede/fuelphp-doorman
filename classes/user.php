@@ -17,7 +17,7 @@ class User extends Privileged {
 	 * Name of the users table in the database;
 	 * @var string
 	 */
-	protected static $_table_name = 'users';
+	protected static $_table_name = 'doorman_users';
 
 	/**
 	 * 1:1 database columns, from the Data Fields package
@@ -45,38 +45,51 @@ class User extends Privileged {
 	}
 
 
-	
+	protected static $_observers = array(
+		'Orm\Observer_CreatedAt' => array(
+			'events' => array('before_insert'),
+			'mysql_timestamp' => true,
+		),
+		'Orm\Observer_Self' => array(
+			'events' => array('before_save'),
+		),
+		'Orm\Observer_Validation' => array(
+   			'events' => array('before_save')
+   		),
+   		'Orm\Observer_Self' => array(
+   			'events'=>array('before_save')
+   		)
+	);
+
+	protected static $_eav = array(
+		'metas' => array(		// we use the statistics relation to store the EAV data
+			'attribute' => 'key',	// the key column in the related table contains the attribute
+			'value' => 'value',		// the value column in the related table contains the value
+		)
+	);
+
+
 	/**
 	 * Properties as defined by the Data Fields package
 	 * @var array
 	 */
-	protected static $_properties = array(
-		'id'=>array(
-		    'label'=>'ID',
-		    'fieldtype'=>'ID'
+	protected static $_properties = array('id',
+		'username'=>array(
+			'data_type' => 'varchar',
+			'null' => false,
+			'validation' => array(
+				'required',
+				'unique_username'
+			),
 		),
-	    'username'=>array(
-		   'label'=>'Username',
-		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Username',
-		   'unique_test'=>'\\Doorman\\User::username_is_unique'
-	    ),
-	    'email'=>array(
-		   'label'=>'E-Mail',
-		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Email',
-		   'unique_test'=>'\\Doorman\\User::email_is_unique'
-	    ),
-	    'password'=>array(
-		   'label'=>'Password',
-		   'fieldtype'=>'\\Doorman\\DataFields\\Fields\\Password',
-		   'validation'=>array('required'),
-		   'verification_method'=>'\\Doorman\\User::verify_password'
-	    ),
-	    'login_hash'=>array(
-		   'fieldtype'=>'System',
-		   'constraint'=>'255',
-		   'coltype'=>'varchar'
-	    )
-	);
+		'password'=>array(
+			'data_type'=>'varchar',
+			'null'=>false,
+			'validation'=>array(
+				'required',
+				'min_length'=>array(5)
+			)
+		),'login_hash','last_login','created_at');
 	
 	protected static $_many_many = array(
 	    'groups'=>array(
@@ -98,8 +111,36 @@ class User extends Privileged {
 		    'key_to'=>'user_id',
 		    'cascade_save'=>true,
 		    'cascade_delete'=>true
+		),
+		'metas'=>array(
+		    'key_from'=>'id',
+		    'model_to'=>'\\Doorman\\User_Meta',
+		    'key_to'=>'user_id',
+		    'cascade_save'=>true,
+		    'cascade_delete'=>true
 		)
 	);
+
+
+	public function _validation_unique_username($val) {
+		if($this->is_new()) {
+			return !(static::query()->where('username', $val)->count());
+		}
+		elseif($this->is_changed('username')) {
+			return !(static::query()->where('username', $val)->where('id', '!=', $this->id)->count());
+		}
+		return true;
+	}
+
+	public function _event_before_save() {
+		if($this->is_changed('password')) {
+			// Hash the password
+			$this->password = \Doorman::instance(static::$_doorman_instance)->hash_password($this->password);
+		}
+	}
+
+
+	
 
 	/**
 	 * If there's a config option to return a different user object (must extend this class)
@@ -111,28 +152,22 @@ class User extends Privileged {
 
 
 	/**
-	 * Retrieves the user class and binds it with LSB if it is set to null. 
 	 * @return string	 
 	 */
 	protected static function _user_class() {
-		if(is_null(static::$_user_class)) {
-			$class = \Config::get('doorman.user_class');
-			if($class) static::$_user_class = $class;
-			else static::$_user_class = '\\Doorman\\User';
-		}
-
-		return static::$_user_class;
+		$doorman = \Doorman::instance(static::$_doorman_instance);
+		return $doorman->get_config('user_class');
 	}
 	
 	public static function get_by_username($username) {
 		$class = static::_user_class();
-		$user = $class::find()->where('username', '=', $username)->get_one();
+		$user = $class::query()->where('username', '=', $username)->get_one();
 		if($user) return $user;
 		return false;
 	}
 	public static function get_by_email($email) {
 		$class = static::_user_class();
-		$user = $class::find()->where('email', '=', $email)->get_one();
+		$user = $class::query()->where('email', '=', $email)->get_one();
 		if($user) return $user;
 		return false;
 	}
@@ -147,9 +182,9 @@ class User extends Privileged {
 	 */
 	public static function username_is_unique($username, $id = null) {
 		if($id)
-			$check = static::find()->where('username', '=', $username)->where('id', '!=', $id)->count();
+			$check = static::query()->where('username', '=', $username)->where('id', '!=', $id)->count();
 		else
-			$check = static::find()->where('username', '=', $username)->count();
+			$check = static::query()->where('username', '=', $username)->count();
 		return ($check) ? false : true;
 	}
 	
@@ -162,9 +197,9 @@ class User extends Privileged {
 	 */
 	public static function email_is_unique($email, $id = null) {
 		if($id)
-			$check = static::find()->where('email', '=', $email)->where('id', '!=', $id)->count();
+			$check = static::query()->where('email', '=', $email)->where('id', '!=', $id)->count();
 		else
-			$check = static::find()->where('email', '=', $email)->count();
+			$check = static::query()->where('email', '=', $email)->count();
 		return ($check) ? false : true;
 	}
 	
@@ -175,9 +210,6 @@ class User extends Privileged {
 		$password = $doorman->hash_password($password);
 		
 		$id_type = $doorman->get_config('identifier');
-		\Log::debug('User class: '.$class);
-		\Log::debug('Id type: '.$id_type);
-		\Log::debug('Password: '.$password);
 		$user = $class::find('first', array(
 			'where'=>array(
 				array('password', '=', $password),
@@ -198,8 +230,7 @@ class User extends Privileged {
 	public static function verify_password($password, $id) {
 		$doorman = \Doorman::instance(static::$_doorman_instance);
 		$hashed = $doorman->hash_password($password);
-		\Log::debug('Checking for password '.$password.' where id is '.$id);
-		$check = static::find()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
+		$check = static::query()->where('id', '=', $id)->where('password', '=', $hashed)->get_one();
 		return ($check) ? true : false;
 	}
 	
@@ -210,9 +241,9 @@ class User extends Privileged {
 	 */
 	public function update_hash($hash) {
 		
-		\Log::debug('Updating hash');
+		//\Log::debug('Updating hash');
 		$this->login_hash = $hash;
-		\Log::debug('About to save with hash set to '.$this->login_hash);
+		//\Log::debug('About to save with hash set to '.$this->login_hash);
 		$this->save();
 	}
 	
@@ -259,16 +290,10 @@ class User extends Privileged {
 	 * @param int $group
 	 * @return \InternalResponse
 	 */
-	public function assign_to($group) {
-		$response = \InternalResponse::forge();
-		$group = Group::find($group);
-		if(!$group) $response->error('Group not found');
-		else {
-			$this->groups[$group->id] = $group;
-			$this->save();
-			$response->success();
-		}
-		return $response;
+	public function assign_to(\Doorman\Group $group) {
+
+		$this->groups[$group->id] = $group;
+		$this->save();
 	}
 	
 	/**
@@ -277,16 +302,43 @@ class User extends Privileged {
 	 * @param int $group
 	 * @return \InternalResponse
 	 */
-	public function remove_from($group) {
-		$response = \InternalResponse::forge();
-		$group = Group::find($group);
-		if(!$group) $response->error('Group not found');
-		else {
-			unset($this->groups[$group->id]);
+	public function remove_from(\Doorman\Group $group) {
+		unset($this->groups[$group->id]);
+		$this->save();
+	}
+
+
+
+	public function meta($key, $val = null) {
+		if($key && ($val !== null)) {
+			// Setting
+			
+			if(array_key_exists($key, static::properties())) {
+				throw new \Exception('Cannot have a meta property with the same name as object property');
+			}
+			// Does it already exist? Check by trying to access the property and seeing if 
+			// we get an exception
+			try {
+				$this->$key = $val;
+			}
+			catch(\OutOfBoundsException $e) {
+				$meta = User_Meta::forge(array('user_id'=>$this->id, 'key'=>$key, 'value'=>$val));
+				$this->metas[] = $meta;
+			}
+
 			$this->save();
-			$response->success();
 		}
-		return $response;
+
+		else {
+			try {
+				$val = $this->$key;
+			}
+			catch(\OutOfBoundsException $e) {
+				$val = false;
+			}
+
+			return $val;
+		}
 	}
 	
 	

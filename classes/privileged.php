@@ -15,7 +15,7 @@
 
 namespace Doorman;
 
-abstract class Privileged extends \DataFields\Model {
+abstract class Privileged extends \Orm\Model {
 
 	/**
 	 * Array of the privileges this object has
@@ -55,7 +55,7 @@ abstract class Privileged extends \DataFields\Model {
 		 * combine it with basic user and guest privileges from config
 		 *
 		 * Note that if the user isn't logged in, the \Auth::has_access method checks
-		 * against the concerto.auth.guest_privileges configuration
+		 * against the doorman.auth.guest_privileges configuration
 		 *
 		 * @see  \Doorman\Doorman::has_access()
 		 */
@@ -74,10 +74,8 @@ abstract class Privileged extends \DataFields\Model {
 	 * Assigns a privilege to the object if it doesn't already have that privilege
 	 * 
 	 * @param  string $privilege
-	 * @return  \InternalResponse
 	 */
 	public function assign_privilege($privilege) {
-		$response = \InternalResponse::forge();
 		/**
 		 * Make sure the string is formed correctly
 		 */
