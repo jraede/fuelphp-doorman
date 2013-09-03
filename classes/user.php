@@ -1,4 +1,6 @@
 <?php
+
+
 namespace Doorman;
 
 /**
@@ -84,11 +86,7 @@ class User extends Privileged {
 		),
 		'password'=>array(
 			'data_type'=>'varchar',
-			'null'=>false,
-			'validation'=>array(
-				'required',
-				'min_length'=>array(5)
-			)
+			'null'=>false
 		),'login_hash','last_login','created_at');
 	
 	protected static $_many_many = array(
@@ -122,15 +120,15 @@ class User extends Privileged {
 	);
 
 
-	public function _validation_unique_username($val) {
-		if($this->is_new()) {
+	public static function _validation_unique_username($val, $id = null) {
+		if($id) {
+			return !(static::query()->where('username', $val)->where('id', '!=', $id)->count());
+		}
+		else {
 			return !(static::query()->where('username', $val)->count());
 		}
-		elseif($this->is_changed('username')) {
-			return !(static::query()->where('username', $val)->where('id', '!=', $this->id)->count());
-		}
-		return true;
 	}
+
 
 	public function _event_before_save() {
 		if($this->is_changed('password')) {
