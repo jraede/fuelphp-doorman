@@ -49,6 +49,8 @@ class Doorman
 		return static::$_instances[$name];
 	}
 
+	
+
 	/**
 	 * Magic method used to call instance methods on the default instance
 	 *

@@ -52,12 +52,13 @@ class User extends Privileged {
 			'events' => array('before_insert'),
 			'mysql_timestamp' => true,
 		),
-		'Orm\Observer_Self' => array(
-			'events' => array('before_save'),
-		),
 		'Orm\Observer_Validation' => array(
    			'events' => array('before_save')
    		),
+   		/**
+   		 * This needs to be after the validation because otherwise it will validate
+   		 * the already hashed password.
+   		 */
    		'Orm\Observer_Self' => array(
    			'events'=>array('before_save')
    		)
@@ -86,7 +87,10 @@ class User extends Privileged {
 		),
 		'password'=>array(
 			'data_type'=>'varchar',
-			'null'=>false
+			'null'=>false,
+			'validation' => array(
+				'valid_password'
+			)
 		),'login_hash','last_login','created_at');
 	
 	protected static $_many_many = array(
@@ -120,13 +124,22 @@ class User extends Privileged {
 	);
 
 
-	public static function _validation_unique_username($val, $id = null) {
-		if($id) {
-			return !(static::query()->where('username', $val)->where('id', '!=', $id)->count());
+	public function _validation_unique_username($val) {
+		if(!$this->is_new()) {
+			return !(static::query()->where('username', $val)->where('id', '!=', $this->id)->count());
 		}
 		else {
 			return !(static::query()->where('username', $val)->count());
 		}
+	}
+
+	public function _validation_valid_password($val) {
+		if($this->is_changed('password')) {
+			if(!$val || strlen($val) < 5) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 

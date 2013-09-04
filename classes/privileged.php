@@ -68,6 +68,104 @@ abstract class Privileged extends \Orm\Model {
 		return array_unique($list);
 	}
 
+	/**
+	 * Allow converting this object to an array
+	 *
+	 * @param bool $custom
+	 * @param bool $recurse
+	 *
+	 * @internal param \Orm\whether $bool or not to include the custom data array
+	 *
+	 * @return  array
+	 */
+	public function to_array($custom = false, $recurse = false)
+	{
+		// storage for the result
+		$array = array();
+
+		// reset the references array on first call
+		$recurse or static::$to_array_references = array();
+
+		// make sure all data is scalar or array
+		if ($custom)
+		{
+			foreach ($this->_custom_data as $key => $val)
+			{
+				if (is_object($val))
+				{
+					if (method_exists($val, '__toString'))
+					{
+						$val = (string) $val;
+					}
+					else
+					{
+						$val = get_object_vars($val);
+					}
+				}
+				$array[$key] = $val;
+			}
+		}
+
+		// make sure all data is scalar or array
+		foreach ($this->_data as $key => $val)
+		{
+			if (is_object($val))
+			{
+				if (method_exists($val, '__toString'))
+				{
+					$val = (string) $val;
+				}
+				else
+				{
+					$val = get_object_vars($val);
+				}
+			}
+			$array[$key] = $val;
+		}
+
+		// convert relations
+		foreach ($this->_data_relations as $name => $rel)
+		{
+			if (is_array($rel))
+			{
+				$array[$name] = array();
+				if ( ! empty($rel))
+				{
+					foreach ($rel as $id => $r)
+					{
+						$array[$name][] = $r->to_array($custom, true);
+					}
+					static::$to_array_references[] = get_class($r);
+				}
+			}
+			else
+			{
+				if ( ! in_array(get_class($rel), static::$to_array_references))
+				{
+					if (is_null($rel))
+					{
+						$array[$name] = null;
+					}
+					else
+					{
+						$array[$name] = $rel->to_array($custom, true);
+						static::$to_array_references[] = get_class($rel);
+					}
+				}
+			}
+		}
+
+		// strip any excluded values from the array
+		foreach (static::$_to_array_exclude as $key)
+		{
+			if (array_key_exists($key, $array))
+			{
+				unset($array[$key]);
+			}
+		}
+
+		return $array;
+	}
 
 
 	/**
